@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Convertidor PDF ↔ JPG</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.11.338/pdf.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.11.338/pdf.worker.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.7.1/jszip.min.js"></script>
+</head>
+<body class="bg-gray-100 min-h-screen flex flex-col items-center justify-start py-10 px-4">
+  <div class="bg-white shadow-2xl rounded-xl max-w-3xl w-full p-8">
+    <h1 class="text-3xl font-bold text-center text-blue-600 mb-4">Convertidor PDF ↔ JPG</h1>
+    <p class="text-center text-gray-600 mb-8">Convierte entre formatos PDF y JPG de forma fácil y rápida.</p>
+
+    <div class="flex justify-center mb-6">
+      <button id="tabPDFtoJPG" class="tab-btn bg-blue-600 text-white px-4 py-2 rounded-l-xl focus:outline-none">PDF a JPG</button>
+      <button id="tabJPGtoPDF" class="tab-btn bg-gray-200 text-gray-700 px-4 py-2 rounded-r-xl focus:outline-none">JPG a PDF</button>
+    </div>
+
+    <div id="pdfToJpgSection" class="tab-content">
+      <div class="border-2 border-dashed border-gray-400 p-6 rounded-lg text-center mb-6" id="pdfDrop">
+        <p class="text-gray-600">Haz clic o arrastra tu archivo PDF aquí</p>
+        <input type="file" accept="application/pdf" id="pdfInput" class="hidden">
+      </div>
+      <div class="flex justify-between items-center mb-4">
+        <label>Calidad:</label>
+        <select id="qualitySelect" class="border rounded px-3 py-1">
+          <option value="1">Alta (100%)</option>
+          <option value="0.85" selected>Media (85%)</option>
+          <option value="0.6">Baja (60%)</option>
+        </select>
+      </div>
+      <button id="convertPdfToJpg" class="bg-blue-600 text-white px-6 py-2 rounded shadow w-full">Convertir a JPG</button>
+      <div id="jpgPreview" class="mt-6 grid grid-cols-2 gap-4"></div>
+    </div>
+
+    <div id="jpgToPdfSection" class="tab-content hidden">
+      <div class="border-2 border-dashed border-gray-400 p-6 rounded-lg text-center mb-6" id="jpgDrop">
+        <p class="text-gray-600">Haz clic o arrastra tus imágenes JPG aquí</p>
+        <input type="file" accept="image/jpeg" id="jpgInput" multiple class="hidden">
+      </div>
+      <div id="jpgPreviewContainer" class="grid grid-cols-2 gap-4 mb-4"></div>
+      <button id="convertJpgToPdf" class="bg-green-600 text-white px-6 py-2 rounded shadow w-full">Convertir a PDF</button>
+    </div>
+  </div>
+
+  <script>
+    const tabPDF = document.getElementById('tabPDFtoJPG');
+    const tabJPG = document.getElementById('tabJPGtoPDF');
+    const pdfSection = document.getElementById('pdfToJpgSection');
+    const jpgSection = document.getElementById('jpgToPdfSection');
+
+    tabPDF.onclick = () => {
+      tabPDF.classList.replace('bg-gray-200', 'bg-blue-600');
+      tabPDF.classList.replace('text-gray-700', 'text-white');
+      tabJPG.classList.replace('bg-blue-600', 'bg-gray-200');
+      tabJPG.classList.replace('text-white', 'text-gray-700');
+      pdfSection.classList.remove('hidden');
+      jpgSection.classList.add('hidden');
+    };
+
+    tabJPG.onclick = () => {
+      tabJPG.classList.replace('bg-gray-200', 'bg-blue-600');
+      tabJPG.classList.replace('text-gray-700', 'text-white');
+      tabPDF.classList.replace('bg-blue-600', 'bg-gray-200');
+      tabPDF.classList.replace('text-white', 'text-gray-700');
+      jpgSection.classList.remove('hidden');
+      pdfSection.classList.add('hidden');
+    };
+
+    const pdfInput = document.getElementById('pdfInput');
+    const pdfDrop = document.getElementById('pdfDrop');
+    const jpgInput = document.getElementById('jpgInput');
+    const jpgDrop = document.getElementById('jpgDrop');
+
+    pdfDrop.onclick = () => pdfInput.click();
+    jpgDrop.onclick = () => jpgInput.click();
+
+    pdfDrop.ondragover = jpgDrop.ondragover = (e) => {
+      e.preventDefault();
+      e.currentTarget.classList.add('bg-gray-100');
+    };
+    pdfDrop.ondragleave = jpgDrop.ondragleave = (e) => {
+      e.preventDefault();
+      e.currentTarget.classList.remove('bg-gray-100');
+    };
+
+    pdfDrop.ondrop = (e) => {
+      e.preventDefault();
+      pdfInput.files = e.dataTransfer.files;
+    };
+    jpgDrop.ondrop = (e) => {
+      e.preventDefault();
+      jpgInput.files = e.dataTransfer.files;
+      showPreview();
+    };
+
+    jpgInput.addEventListener('change', showPreview);
+
+    function showPreview() {
+      const container = document.getElementById('jpgPreviewContainer');
+      container.innerHTML = '';
+      const files = Array.from(jpgInput.files);
+      files.forEach(file => {
+        const img = document.createElement('img');
+        img.className = 'w-full object-contain rounded shadow';
+        img.src = URL.createObjectURL(file);
+        container.appendChild(img);
+      });
+    }
+
+    document.getElementById('convertPdfToJpg').onclick = async () => {
+      const file = pdfInput.files[0];
+      if (!file) return alert('Selecciona un archivo PDF');
+
+      const quality = parseFloat(document.getElementById('qualitySelect').value);
+      const pdfData = new Uint8Array(await file.arrayBuffer());
+      const pdf = await pdfjsLib.getDocument({ data: pdfData }).promise;
+      const preview = document.getElementById('jpgPreview');
+      preview.innerHTML = '';
+
+      if (pdf.numPages === 1) {
+        const page = await pdf.getPage(1);
+        const viewport = page.getViewport({ scale: 2 });
+        const canvas = document.createElement('canvas');
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+        await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+        canvas.toBlob(blob => {
+          const img = document.createElement('img');
+          img.src = URL.createObjectURL(blob);
+          img.className = 'rounded shadow';
+          preview.appendChild(img);
+          saveAs(blob, 'pagina.jpg');
+        }, 'image/jpeg', quality);
+      } else {
+        const zip = new JSZip();
+        for (let i = 1; i <= pdf.numPages; i++) {
+          const page = await pdf.getPage(i);
+          const viewport = page.getViewport({ scale: 2 });
+          const canvas = document.createElement('canvas');
+          canvas.width = viewport.width;
+          canvas.height = viewport.height;
+          await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+          canvas.toBlob(blob => {
+            zip.file(`pagina-${i}.jpg`, blob);
+            const img = document.createElement('img');
+            img.src = URL.createObjectURL(blob);
+            img.className = 'rounded shadow';
+            preview.appendChild(img);
+          }, 'image/jpeg', quality);
+        }
+        setTimeout(() => {
+          zip.generateAsync({ type: 'blob' }).then(content => saveAs(content, 'pdf_convertido.zip'));
+        }, 3000);
+      }
+    };
+
+    document.getElementById('convertJpgToPdf').onclick = async () => {
+      const files = Array.from(jpgInput.files);
+      if (!files.length) return alert('Selecciona al menos una imagen JPG');
+      const { jsPDF } = window.jspdf;
+      const pdf = new jsPDF({ unit: 'pt', format: 'letter' });
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+
+      let yOffset = 0;
+      for (let i = 0; i < files.length; i++) {
+        const img = await createImageBitmap(files[i]);
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width;
+        canvas.height = img.height;
+        canvas.getContext('2d').drawImage(img, 0, 0);
+        const dataUrl = canvas.toDataURL('image/jpeg');
+
+        if (yOffset + canvas.height > pageHeight - 20) {
+          pdf.addPage();
+          yOffset = 20;
+        }
+
+        const ratio = canvas.width / canvas.height;
+        const imgWidth = pageWidth - 40;
+        const imgHeight = imgWidth / ratio;
+
+        pdf.addImage(dataUrl, 'JPEG', 20, yOffset, imgWidth, imgHeight);
+        yOffset += imgHeight + 10;
+      }
+
+      pdf.save('imagenes_convertidas.pdf');
+    };
+  </script>
+</body>
+</html>
